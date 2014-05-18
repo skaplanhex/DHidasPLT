@@ -1,0 +1,89 @@
+/************************************************************
+**                                                         **
+**       Convert PLT event data from text to binary        **
+**                                                         **
+**  Expects each line in the text file to be of the form:  **
+**   <Channel> <ROC> <Column> <Row> <ADC> <Event Number>   **
+**                                                         **
+**              Written by Steven. M Kaplan                **
+**                                                         **
+************************************************************/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <stdint.h>
+
+using namespace std;
+
+ifstream textFile;
+ofstream binaryFile;
+
+//close the file streams
+void cleanUp(){
+    textFile.close();
+    binaryFile.close();
+}
+//function that actually does the work
+void createBinaryFile(){
+    string line;
+    vector< vector<int> > eventInfo;
+    int currentEventNumber = -10; //negative as a placeholder for the first event
+    while( getline(textFile, line) ){
+        if (line.size() == 0) continue; //skip empty lines
+        int channel,ROC,column,row,eventNum;
+        double adc;
+        uint32_t n,n2;
+        //create stringstream object for each line
+        stringstream ss(line);
+        ss >> channel >> ROC >> column >> row >> adc >> eventNum;
+        if ( eventNum > currentEventNumber ){ //when starting new event, write new event header to binary
+            currentEventNumber = eventNum;
+            n2 = (5 << 8);
+            n = 0x50000000;
+            n |= currentEventNumber; //i.e. the event that has just finished in the loop
+            binaryFile.write( (char*) &n2, sizeof(uint32_t) );
+            binaryFile.write( (char*) &n, sizeof(uint32_t) );
+        }
+        n = 0x00000000;
+        n |= (channel << 26);
+        n |= ( (ROC + 1) << 21);
+        if (row % 2 == 0) {
+            n |= ( ((80 - row) * 2) << 8 );
+        }
+        else {
+            n |= ( ((80 - row) * 2 + 1) << 8 );
+        }
+        if (column % 2 == 0) {
+            n |= ( (column / 2) << 16  );
+        } 
+        else {
+            n |= (( (column - 1) / 2) << 16  );
+        }
+        //casting to force adc to be an int, is this ok? It needs to be in order to do binary operations!
+        n |= (int)adc;
+        binaryFile.write( (char*) &n, sizeof(uint32_t) );
+        ss.str( string() ); //flush stringstream for next line in the text file
+    }
+
+}
+int main(int argc, char *argv[]){
+    //force having 2 arguments
+    if (argc != 3){
+        cout << "Usage: ./EventTextToBinary <Text-file-to-be-read> <Name-of-binary-file-to-be-created>" << endl;
+        return 1;
+    }
+    //create binary file
+    binaryFile.open( argv[2] );
+    //open the text file
+    textFile.open( argv[1] );
+    if ( !textFile.is_open() ){
+        cout << "Could not open the text file!" << endl;
+        return 1;
+    }
+    createBinaryFile();
+    cleanUp();
+    return 0;
+}
