@@ -77,7 +77,7 @@ void createBinaryFile(){
         n = 0x00000000;
         n |= (channel << 26);
         n |= ( (ROC + 1) << 21);
-        if (row % 2 == 0) {
+        if (column % 2 == 0) {
             n |= ( ((80 - row) * 2) << 8 );
         }
         else {
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
         return 1;
     }
     //create binary file
-    binaryFile.open( argv[2] );
+    binaryFile.open( argv[2], std::ios::out | std::ios::binary );
     //open the text file
     textFile.open( argv[1] );
     if ( !textFile.is_open() ){
