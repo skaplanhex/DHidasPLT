@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "EventTextToBinary.h"
+#include "PLTBinaryFileReader.h"
 
 using namespace std;
 
