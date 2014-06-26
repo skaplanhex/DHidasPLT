@@ -8,6 +8,8 @@
 
 using namespace std;
 
+ofstream newTextFile;
+
 pair<string,uint32_t> toHex(int channel, int ROC, int column, int row, int adc){
     uint32_t n = 0x00000000;
     n |= (channel << 26);
@@ -71,26 +73,31 @@ vector<int> toHitInfo(uint32_t word){
     v.push_back(adc);
     return v;
 }
-
+string toString(char c){
+    stringstream ss;
+    ss << c;
+    string res = ss.str();
+    return res;
+}
+// first convert text to binary, then convert it back with own code to debug the conversion
 int main(int argc, char* argv[]){
-	if (argc != 6){
-        cout << "Usage: ./test channel ROC column row adc" << endl;
+    if (argc != 3){
+        cout << "Usage: ./BinaryTest textFileName binaryFileName" << endl;
         return 0;
     }
-    int channel=stoi(argv[1]);
-	int ROC=stoi(argv[2]);
-	int column=stoi(argv[3]);
-	int row=stoi(argv[4]);
-	int adc=stoi(argv[5]);
-	pair<string,uint32_t> hexinfo = toHex(channel,ROC,column,row,adc);
-    //cout << "now convert " << hexinfo.first << " back to hit information.." << endl;
-    vector<int> res = toHitInfo(hexinfo.second);
-    for (int i = 0; i < res.size(); i++){
-        cout << res.at(i) << " ";
-        if ( i == (res.size()-1) )
-            cout << "\n";
+    string textFileName = argv[1];
+    string binaryFileName = argv[2];
+    //plan: use eventtexttobinary to convert text file to binary, implement a readback script of my writing, figure out what's going on
+    createBinaryFile(textFileName,binaryFileName);
+    int textFileNameSize = textFileName.size();
+    string newTextFileName = "";
+    for (int i = 0; i<textFileNameSize; i++){
+        string c = toString(textFileName.at(i));
+        newTextFileName.append(c);
+        if (i == textFileNameSize-1) break; //to not get an out of range issue with the next line
+        if (toString(textFileName.at(i+1)) == ".") newTextFileName.append("TWO");
     }
-    return 0;
+    newTextFile.open( newTextFileName.c_str() );
 
-    
+    return 0;
 }
