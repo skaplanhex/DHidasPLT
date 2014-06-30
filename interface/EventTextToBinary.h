@@ -43,6 +43,7 @@ void createBinaryFile(string textFileName, string binaryFileName){
     while( getline(textFile, line) ){
         if (line.size() == 0) continue; //skip empty lines
         int channel,ROC,column,row,eventNum,adc;
+        ROC++; //FED gives ROC+1
         double adcdouble;
         uint32_t n,n2;
         //create stringstream object for each line

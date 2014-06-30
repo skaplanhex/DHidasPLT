@@ -9,6 +9,7 @@
 
 using namespace std;
 
+PLTBinaryFileReader binFileReader;
 ofstream newTextFile;
 
 pair<string,uint32_t> toHex(int channel, int ROC, int column, int row, int adc){
@@ -74,6 +75,7 @@ vector<int> toHitInfo(uint32_t word){
     v.push_back(adc);
     return v;
 }
+//convert char to string
 string toString(char c){
     stringstream ss;
     ss << c;
@@ -99,6 +101,11 @@ int main(int argc, char* argv[]){
         if (toString(textFileName.at(i+1)) == ".") newTextFileName.append("TWO");
     }
     newTextFile.open( newTextFileName.c_str() );
+    binFileReader.SetIsText(false);
+    binFileReader.Open(binaryFileName);
 
+
+
+    newTextFile.close();
     return 0;
 }
