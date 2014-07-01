@@ -544,7 +544,7 @@ void GetTracksParallelGaus (std::vector<PLTHit*>& Hits, PLTAlignment& Alignment)
   float const ColWidth = 12;
   float const RowWidth = 12;
 
-  int const NTelescopes = 1;
+  int const NTelescopes = 16;
   for (int i = 1; i <= NTelescopes; ++i) {
 
     // pick a starting point with width and offset
@@ -559,13 +559,15 @@ void GetTracksParallelGaus (std::vector<PLTHit*>& Hits, PLTAlignment& Alignment)
 
       // Use L coord system:
       // THINK ABOUT THIS FOR ROTATIONS...
-      float const LX = Alignment.PXtoLX(StartCol);
-      float const LY = Alignment.PYtoLY(StartRow);
+      // float const LX = Alignment.PXtoLX(StartCol);
+      // float const LY = Alignment.PYtoLY(StartRow);
 
-      std::pair<float, float> LXY = Alignment.TtoLXY(LX, LY, i, r);
+      // std::pair<float, float> LXY = Alignment.TtoLXY(LX, LY, i, r);
 
-      int const PX = Alignment.PXfromLX(LXY.first);
-      int const PY = Alignment.PYfromLY(LXY.second);
+      // int const PX = Alignment.PXfromLX(LXY.first);
+      // int const PY = Alignment.PYfromLY(LXY.second);
+      int const PX = gRandom->Integer(52);
+      int const PY = gRandom->Integer(80);
 
 
       //printf("StartCol LX PX StartRow LY PY   %2i %6.2f %2i   %2i %6.2f %2i\n", StartCol, LX, PX, StartRow, LY, PY);
