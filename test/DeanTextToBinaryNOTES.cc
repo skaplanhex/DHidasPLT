@@ -17,7 +17,7 @@
 
 int DeanTextToBinary (std::string const InFileName, std::string const OutFileName)
 {
-
+  //check that all the filestreams are operational
   std::ifstream InFile(InFileName.c_str());
   if (!InFile.is_open()) {
     std::cerr << "ERROR: cannot open input file: " << InFileName << std::endl;
@@ -30,19 +30,20 @@ int DeanTextToBinary (std::string const InFileName, std::string const OutFileNam
     throw;
   }
 
-  uint32_t n, n2;
+  uint32_t n, n2; //the usual bit holders
 
-  int Channel, ROC, Column, Row, ADC, EventNumber;
+  int Channel, ROC, Column, Row, ADC, EventNumber; //store the hit info
   int LastEventNumber = -1;
   bool IsFirstEvent = true;
-  std::vector<PLTHit> Hits;
+  std::vector<PLTHit> Hits; //vector of hits filled for each event most likely
 
+  //loop goes until the ifstream can't read the info anymore (i.e. reached the end of the file)
   for ( ; InFile >> Channel >> ROC >> Column >> Row >> ADC >> EventNumber; ) {
-    if (IsFirstEvent) {
+    if (IsFirstEvent) { //set stuff for first event (not necessarily event 1)
       LastEventNumber = EventNumber;
       IsFirstEvent = false;
     }
-    if (EventNumber != LastEventNumber) {
+    if (EventNumber != LastEventNumber) { //if we get to a line that has a new event
 
       // Delete all hits and clear vector
       n2 = (5 << 8);

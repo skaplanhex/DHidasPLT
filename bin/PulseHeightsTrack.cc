@@ -83,6 +83,7 @@ int PulseHeightsTrack (std::string const DataFileName, std::string const GainCal
 
 
   // Grab the plt event reader
+  // PLTEvent Event(DataFileName, GainCalFileName, AlignmentFileName);
   PLTEvent Event(DataFileName, GainCalFileName, AlignmentFileName, true);
 
   PLTPlane::FiducialRegion FidRegionHits    = PLTPlane::kFiducialRegion_Diamond;

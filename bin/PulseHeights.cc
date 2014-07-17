@@ -53,6 +53,7 @@ int PulseHeights (std::string const DataFileName, std::string const GainCalFileN
 
 
   // Grab the plt event reader
+  // PLTEvent Event(DataFileName, GainCalFileName);
   PLTEvent Event(DataFileName, GainCalFileName, true);
   Event.SetPlaneClustering(PLTPlane::kClustering_Seed_5x5, PLTPlane::kFiducialRegion_m2_m2);
   Event.SetTrackingAlgorithm(PLTTracking::kTrackingAlgorithm_NoTracking);
