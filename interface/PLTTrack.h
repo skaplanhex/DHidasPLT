@@ -35,6 +35,9 @@ class PLTTrack
 
     float TX (float const);
     float TY (float const);
+    float getGVX();
+    float getGVY();
+    float getGVZ();
 
     std::pair<float, float> GXYatGZ (float const, PLTAlignment&);
 

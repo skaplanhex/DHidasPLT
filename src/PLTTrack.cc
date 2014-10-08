@@ -335,3 +335,13 @@ float PLTTrack::D2 ()
 {
   return fD2;
 }
+
+float PLTTrack::getGVX(){
+  return fGVX;
+}
+float PLTTrack::getGVY(){
+  return fGVY;
+}
+float PLTTrack::getGVZ(){
+  return fGVZ;
+}

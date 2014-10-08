@@ -12,6 +12,7 @@
 
 #include "PLTEvent.h"
 #include "PLTU.h"
+#include "TFile.h"
 
 
 
@@ -44,6 +45,29 @@ int TrackingEfficiency (std::string const, std::string const, std::string const)
 
 
 // CODE BELOW
+float transformSlopeY(float slopeX, float slopeY){
+  //float p0 = -0.00051747;
+  // float p1 = -0.000125617;
+  // float p2 = -6.20074;
+  // float p3 = 352.422;
+  // float p4 = -75028.4;
+  // float ret = slopeY - (p1*slopeY) - (p2*slopeY*slopeY) - (p3*slopeY*slopeY*slopeY) - (p4*slopeY*slopeY*slopeY*slopeY);
+
+  //old params
+  // float p2 = -11.8481;
+  // float p4  = -3797.14;
+ 
+  //new params
+  float p2 = -11.905;
+  float p4 = 3603.928;
+  float ret;
+  if (fabs(slopeY)<0.05)
+    ret = slopeY - (p2*slopeX*slopeX) - (p4*slopeX*slopeX*slopeX*slopeX);
+  else
+    ret = slopeY;
+
+  return ret;
+}
 TH1F* FidHistFrom2D (TH2F* hIN, TString const NewName, int const NBins, PLTPlane::FiducialRegion FidRegion)
 {
   // This function returns a TH1F* and YOU are then the owner of
@@ -93,10 +117,11 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
   PLTU::SetStyle();
 
   // Grab the plt event reader
-  PLTEvent Event(DataFileName, GainCalFileName, AlignmentFileName);
+  PLTEvent Event(DataFileName, GainCalFileName, AlignmentFileName, true);
 
-  PLTPlane::FiducialRegion FidRegionHits  = PLTPlane::kFiducialRegion_Diamond;
-  PLTPlane::FiducialRegion FidRegionTrack = PLTPlane::kFiducialRegion_m5_m5;
+  PLTPlane::FiducialRegion FidRegionHits  = PLTPlane::kFiducialRegion_All;
+  //PLTPlane::FiducialRegion FidRegionTrack = PLTPlane::kFiducialRegion_m5_m5;
+  PLTPlane::FiducialRegion FidRegionTrack = PLTPlane::kFiducialRegion_All;
   Event.SetPlaneFiducialRegion(FidRegionHits);
   Event.SetPlaneClustering(PLTPlane::kClustering_AllTouching,PLTPlane::kFiducialRegion_All);
 
@@ -114,6 +139,10 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
   std::map<int, TH1F*> hEffMapPulseHeightN;
   std::map<int, TH1F*> hEffMapPulseHeightD;
   std::map<int, TH1F*> hMapPulseHeights;
+  std::map<int, TH1F*> hSlopeX;
+  std::map<int, TH1F*> hSlopeY;
+  std::map<int, TH2F*> hSlopeXvsSlopeY;
+  std::map<int, TH2F*> hSlopeXvsSlopeY_Transformed;
 
   float const PixelDist = 5;
 
@@ -139,12 +168,22 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
       // Make some hists for this telescope
       if (!hEffMapN.count(Channel * 10 + 0)) {
 
+        TString Name = TString::Format("SlopeX_Ch%i", Channel);
+        hSlopeX[Channel] = new TH1F(Name,Name,100,-0.1,0.1);
+        Name = TString::Format("SlopeY_Ch%i", Channel);
+        hSlopeY[Channel] = new TH1F(Name,Name,125,-0.1,0.1);
+        Name = TString::Format("SlopeXvsSlopeY_Ch%i",Channel);
+        hSlopeXvsSlopeY[Channel] = new TH2F(Name,Name,125,-0.1,0.1,100,-0.1,0.1);
+        Name = TString::Format("SlopeXvsSlopeY_Transformed_Ch%i",Channel);
+        hSlopeXvsSlopeY_Transformed[Channel] = new TH2F(Name,Name,125,-0.1,0.1,100,-0.1,0.1);
+
+
         // Make a numerator and demonitor hist for every roc for this channel
         for (int iroc = 0; iroc != 3; ++iroc) {
-          TString Name = TString::Format("EffNumerator_Ch%i_ROC%i", Channel, iroc);
+          Name = TString::Format("EffNumerator_Ch%i_ROC%i", Channel, iroc);
           hEffMapN[Channel * 10 + iroc] = new TH2F(Name, Name, PLTU::NCOL, PLTU::FIRSTCOL, PLTU::LASTCOL + 1, PLTU::NROW, PLTU::FIRSTROW, PLTU::LASTROW + 1);
           Name = TString::Format("EffNumeratorSlopeX_Ch%i_ROC%i", Channel, iroc);
-	  hEffMapSlopeXN[Channel * 10 + iroc] = new TH1F(Name, Name, 100, -0.1, 0.1);
+	        hEffMapSlopeXN[Channel * 10 + iroc] = new TH1F(Name, Name, 100, -0.1, 0.1);
           Name = TString::Format("EffNumeratorSlopeY_Ch%i_ROC%i", Channel, iroc);
           hEffMapSlopeYN[Channel * 10 + iroc] = new TH1F(Name, Name, 100, -0.1, 0.1);
           Name = TString::Format("EffNumeratorPulseHeight_Ch%i_ROC%i", Channel, iroc);
@@ -195,6 +234,26 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
         Tracks[3].MakeTrack(Alignment);
       }
 
+      //fill slopes for 3 fold coincidences
+      bool roc0Good = Tracks[0].IsFiducial(Channel,0,Alignment,FidRegionTrack);
+      bool roc1Good = Tracks[0].IsFiducial(Channel,1,Alignment,FidRegionTrack);
+      bool roc2Good = Tracks[0].IsFiducial(Channel,2,Alignment,FidRegionTrack);
+
+      //bool isGoodTrack = Tracks[0].NHits()>2;
+
+      // std::cout << "Event# " << ientry << std::endl;
+      // std::cout << roc0Good << " " << roc1Good << " " << roc2Good << " " << Tracks[0].NHits() << std::endl;
+
+      if ( roc0Good && roc1Good && roc2Good && (Tracks[0].NClusters()>2) ){
+          float slopeX = Tracks[0].fTVX/Tracks[0].fTVZ;
+          float slopeY = Tracks[0].fTVY/Tracks[0].fTVZ;
+          hSlopeX[Channel]->Fill(slopeX);
+          hSlopeY[Channel]->Fill(slopeY);
+          hSlopeXvsSlopeY[Channel]->Fill(slopeX,slopeY);
+          float slopeY_transformed = transformSlopeY(slopeX, slopeY);
+          hSlopeXvsSlopeY_Transformed[Channel]->Fill(slopeX,slopeY_transformed);
+      }
+
       // Test of plane 2
       if (Plane[0]->NClusters() && Plane[1]->NClusters()) {
         if (Tracks[1].IsFiducial(Channel, 2, Alignment, FidRegionTrack) && Tracks[1].NHits() == 2) {
@@ -203,8 +262,8 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
           std::pair<float, float> LXY = Alignment.TtoLXY(Tracks[1].TX( CP->LZ ), Tracks[1].TY( CP->LZ ), Channel, 2);
           std::pair<int, int> PXY = Alignment.PXYfromLXY(LXY);
           hEffMapD[Channel * 10 + 2]->Fill(PXY.first, PXY.second);
-          hEffMapSlopeXD[Channel * 10 + 2]->Fill(Tracks[1].fTVX/Tracks[1].fTVZ);
-          hEffMapSlopeYD[Channel * 10 + 2]->Fill(Tracks[1].fTVY/Tracks[1].fTVZ);
+          hEffMapSlopeXD[Channel * 10 + 2]->Fill(Tracks[0].fTVX/Tracks[0].fTVZ);
+          hEffMapSlopeYD[Channel * 10 + 2]->Fill(Tracks[0].fTVY/Tracks[0].fTVZ);
 	  float cluster_charge = 0;
 	  if(Plane[2]->NClusters()) cluster_charge=Plane[2]->Cluster(0)->Charge();
           hEffMapPulseHeightD[Channel * 10 + 2]->Fill(cluster_charge);
@@ -215,8 +274,8 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
             if (abs(RPXY.first) <= PixelDist && abs(RPXY.second) <= PixelDist) {
               //hEffMapN[Channel * 10 + 2]->Fill(Plane[2]->Cluster(0)->SeedHit()->Column(), Plane[2]->Cluster(0)->SeedHit()->Row());
               hEffMapN[Channel * 10 + 2]->Fill(PXY.first, PXY.second);
-	      hEffMapSlopeXN[Channel * 10 + 2]->Fill(Tracks[1].fTVX/Tracks[1].fTVZ);
-	      hEffMapSlopeYN[Channel * 10 + 2]->Fill(Tracks[1].fTVY/Tracks[1].fTVZ);
+	      hEffMapSlopeXN[Channel * 10 + 2]->Fill(Tracks[0].fTVX/Tracks[0].fTVZ);
+	      hEffMapSlopeYN[Channel * 10 + 2]->Fill(Tracks[0].fTVY/Tracks[0].fTVZ);
 	      hEffMapPulseHeightN[Channel * 10 + 2]->Fill(cluster_charge);
 	      hMapPulseHeights[Channel * 10 + 2]->Fill(cluster_charge);
               ++HC[Channel].NFiducialAndHit[2];
@@ -369,7 +428,7 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
     //hEffMapSlopeXN[id]->GetYaxis()->SetTitle("Events per");
     hMapPulseHeights[id]->GetXaxis()->SetTitle("Electrons");
     hMapPulseHeights[id]->SetFillColor(40);
-    gStyle->SetOptStat(10);
+    gStyle->SetOptStat(111111);
     hMapPulseHeights[id]->Draw();
     
     Name = TString::Format("plots/ExtrapolatedTrackPulseHeights_Ch%i_ROC%i", Channel, ROC);
@@ -377,6 +436,69 @@ int TrackingEfficiency (std::string const DataFileName, std::string const GainCa
 
   }
 
+  //plot all the slopes
+  TFile *slopeFile = new TFile("slopePlots.root","RECREATE");
+  for (std::map<int, TH1F*>::iterator it = hSlopeX.begin(); it != hSlopeX.end(); ++it) {
+
+    int channel = it->first;
+    TCanvas Can1("Can1","", 1000, 500);
+    Can1.Divide(2, 2);
+    hSlopeX[channel]->GetXaxis()->SetTitle("Local Telescope Track-SlopeX #DeltaX/#DeltaZ");
+    hSlopeY[channel]->GetXaxis()->SetTitle("Local Telescope Track-SlopeY #DeltaY/#DeltaZ");
+    hSlopeXvsSlopeY[channel]->GetXaxis()->SetTitle("Local Telescope Track-SlopeX #DeltaX/#DeltaZ");
+    hSlopeXvsSlopeY_Transformed[channel]->GetXaxis()->SetTitle("Local Telescope Track-SlopeX #DeltaX/#DeltaZ");
+
+    hSlopeX[channel]->GetYaxis()->SetTitle("Number of Tracks");
+    hSlopeY[channel]->GetYaxis()->SetTitle("Number of Tracks");
+    hSlopeXvsSlopeY[channel]->GetYaxis()->SetTitle("Local Telescope Track-SlopeY #DeltaY/#DeltaZ");
+    hSlopeXvsSlopeY_Transformed[channel]->GetYaxis()->SetTitle("Local Telescope Track-SlopeY #DeltaY/#DeltaZ");
+
+    hSlopeX[channel]->GetYaxis()->SetTitleOffset(1.3);
+    hSlopeY[channel]->GetYaxis()->SetTitleOffset(1.3);
+
+    // hSlopeX[channel]->GetXaxis()->SetNdivisions(11);
+    // hSlopeY[channel]->GetXaxis()->SetNdivisions(11);
+
+    hSlopeX[channel]->SetStats(1111);
+    hSlopeY[channel]->SetStats(1111);
+    hSlopeXvsSlopeY[channel]->SetStats(1111);
+    hSlopeXvsSlopeY_Transformed[channel]->SetStats(1111);
+
+    Can1.cd(1);
+    hSlopeX[channel]->Draw();
+
+    Can1.cd(2);
+    hSlopeY[channel]->Draw();
+
+    Can1.cd(3);
+    hSlopeXvsSlopeY[channel]->Draw("colz");
+
+    Can1.cd(4);
+    hSlopeXvsSlopeY_Transformed[channel]->Draw("colz");
+
+    slopeFile->cd();
+    hSlopeX[channel]->Write();
+    hSlopeY[channel]->Write();
+    hSlopeXvsSlopeY[channel]->Write();
+    hSlopeXvsSlopeY_Transformed[channel]->Write();
+
+    TString Name = TString::Format("plots/TrackSlopes_Ch%i",channel);
+    Can1.SaveAs(Name+".gif");
+    // if(channel == 9){
+    //   int leftbin = hSlopeY[9]->FindBin(-0.005)-1;
+    //   int rightbin = hSlopeY[9]->FindBin(0.002)+1;
+    //   double numAccidentals = 1.0*( hSlopeY[9]->Integral(0,leftbin) + hSlopeY[9]->Integral(rightbin,hSlopeY[9]->GetNbinsX()+1) );
+    //   double total = 1.0*hSlopeY[9]->Integral(0,hSlopeY[9]->GetNbinsX()+1);
+    //   double rate = numAccidentals/total;
+    //   double err = sqrt( rate*(1.0-rate)/total );
+    //   std::cout << "Accidental rate: " << rate << " +- " << err << std::endl;
+    //   std::cout << "Total tracks: " << total << std::endl;
+    // }
+
+
+  }
+  slopeFile->Close();
+  delete slopeFile;
 
   for (std::map<int, HitCounter>::iterator it = HC.begin(); it != HC.end(); ++it) {
     printf("Efficiencies for Channel %2i:\n", it->first);

@@ -29,8 +29,8 @@ int TrackTest (std::string const DataFileName, std::string const GainCalFileName
 
   // Grab the plt event reader
   PLTEvent Event(DataFileName, GainCalFileName, AlignmentFileName);
-  Event.SetPlaneFiducialRegion(PLTPlane::kFiducialRegion_Diamond);
-  Event.SetPlaneClustering(PLTPlane::kClustering_AllTouching,PLTPlane::kFiducialRegion_Diamond);
+  Event.SetPlaneFiducialRegion(PLTPlane::kFiducialRegion_All);
+  Event.SetPlaneClustering(PLTPlane::kClustering_AllTouching,PLTPlane::kFiducialRegion_All);
 
   PLTAlignment Alignment;
   Alignment.ReadAlignmentFile(AlignmentFileName);
